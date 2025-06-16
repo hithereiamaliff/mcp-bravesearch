@@ -146,6 +146,24 @@ Docker build:
 docker build -t mcp/brave-search:latest .
 ```
 
+## Development
+
+Clone this repo to your machine, then add a reference to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "brave-search-dev": {
+      "command": "node",
+      "args": ["C:\\GitHub\\brave-search-mcp-server\\dist\\index.js"],
+      "env": {
+        "BRAVE_API_KEY": "BSA…xWI"
+      }        
+    }
+  }
+}
+```
+
 ## License
 
 This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
