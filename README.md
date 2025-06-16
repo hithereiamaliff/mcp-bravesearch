@@ -157,7 +157,7 @@ Clone this repo to your machine, then add a reference to your `claude_desktop_co
       "command": "node",
       "args": ["C:\\GitHub\\brave-search-mcp-server\\dist\\index.js"],
       "env": {
-        "BRAVE_API_KEY": "BSA…xWI"
+        "BRAVE_API_KEY": "YOUR_API_KEY_HERE"
       }        
     }
   }
