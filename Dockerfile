@@ -1,7 +1,7 @@
 FROM node:22.12-alpine AS builder
 
 # Must be entire project because `prepare` script is run during `npm install` and requires all files.
-COPY src/brave-search /app
+COPY src/ /app/src
 COPY tsconfig.json /tsconfig.json
 
 WORKDIR /app
