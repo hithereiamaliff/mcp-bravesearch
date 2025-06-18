@@ -19,7 +19,11 @@
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.3"
+    "@modelcontextprotocol/sdk": "^1.12.3",
+    "@types/express": "^5.0.3",
+    "commander": "^14.0.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@types/node": "24.0.3",

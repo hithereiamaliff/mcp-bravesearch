@@ -1,47 +1,17 @@
-import { type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { type WebResponse as BraveWeb, type BravePoiResponse, type BraveDescription } from "../types/index.js";
 import { performSearch as performWebSearch } from "./web.js";
 import { BRAVE_API_KEY } from "../constants.js";
 import { checkRateLimit } from "../utils.js";
 
-export default {
-    name: "brave_local_search",
-    description:
-        "Searches for local businesses and places using Brave's Local Search API. " +
-        "Best for queries related to physical locations, businesses, restaurants, services, etc. " +
-        "Returns detailed information including:\n" +
-        "- Business names and addresses\n" +
-        "- Ratings and review counts\n" +
-        "- Phone numbers and opening hours\n" +
-        "Use this when the query implies 'near me' or mentions specific locations. " +
-        "Automatically falls back to web search if no local results are found.",
-    inputSchema: {
-        type: "object",
-        properties: {
-            query: {
-                type: "string",
-                description: "Local search query (e.g. 'pizza near Central Park')"
-            },
-            count: {
-                type: "number",
-                description: "Number of results (1-20, default 5)",
-                default: 5
-            },
-        },
-        required: ["query"]
-    }
-} as Tool;
+export const name = "brave_local_search";
+export const description = "Searches for local businesses and places using Brave's Local Search API. Best for queries related to physical locations, businesses, restaurants, services, etc. Returns detailed information including:\n- Business names and addresses\n- Ratings and review counts\n- Phone numbers and opening hours\nUse this when the query implies 'near me' or mentions specific locations. Automatically falls back to web search if no local results are found.";
+export const paramsSchema = z.object({
+    query: z.string().describe("Local search query (e.g. 'pizza near Central Park')"),
+    count: z.number().min(1).max(20).default(5).describe("Number of results (1-20, default 5)"),
+});
 
-export function validateArgs(args: unknown): args is { query: string; count?: number } {
-    return (
-        typeof args === "object" &&
-        args !== null &&
-        "query" in args &&
-        typeof (args as { query: string }).query === "string"
-    );
-}
-
-export async function performSearch(query: string, count: number = 5) {
+export async function performSearch({ query, count }: z.infer<typeof paramsSchema>) {
     checkRateLimit();
     // Initial search to get location IDs
     const webUrl = new URL('https://api.search.brave.com/res/v1/web/search');
@@ -66,7 +36,7 @@ export async function performSearch(query: string, count: number = 5) {
     const locationIds = webData.locations?.results?.filter((r): r is { id: string; title?: string } => r.id != null).map(r => r.id) || [];
 
     if (locationIds.length === 0) {
-        return performWebSearch(query, count); // Fallback to web search
+        return performWebSearch({ query, count, offset: 0 }); // Fallback to web search with default offset
     }
 
     // Get POI details and descriptions in parallel
@@ -75,7 +45,13 @@ export async function performSearch(query: string, count: number = 5) {
         getDescriptionsData(locationIds)
     ]);
 
-    return formatLocalResults(poisData, descriptionsData);
+    return {
+        content: [{
+            type: "text" as const,
+            text: formatLocalResults(poisData, descriptionsData)
+        }],
+        isError: false,
+    };
 }
 
 async function getPoisData(ids: string[]): Promise<BravePoiResponse> {
