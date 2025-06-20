@@ -1,6 +1,6 @@
 # Brave Search MCP Server
 
-An MCP server implementation that integrates the Brave Search API, providing both web and local search capabilities.
+An MCP server implementation that integrates the Brave Search API, providing both web and local search capabilities. This project supports both HTTP and STDIO transports. By default the project will launch into HTTP Streaming mode. For STDIO support, pass `--transport stdio` via the CLI.
 
 ## Features
 
@@ -148,6 +148,7 @@ docker build -t mcp/brave-search:latest .
 
 ## Development
 
+### Testing via Claude Desktop
 Clone this repo to your machine, then add a reference to your `claude_desktop_config.json`:
 
 ```json
@@ -163,6 +164,24 @@ Clone this repo to your machine, then add a reference to your `claude_desktop_co
   }
 }
 ```
+
+### Testing via MCP Inspector
+
+To test within the MCP Inspector, you'll need to build the project, launch the HTTP server (if you intend to test the HTTP endpoint), and initialize MCP Inspector:
+
+```bash
+npm install
+npm run build
+node dist/index.js # defaults to http-mode, use `node dist/index.js --transport stdio` for stdio-mode
+```
+
+From another terminal (within the `dist/` directory):
+
+```bash
+npx @modelcontextprotocol/inspector node dist/index.js
+```
+
+In order to test STDIO via MCP Inspector, you will need to add `--transport stdio` to the arguments via the Inspector UI.
 
 ## License
 
