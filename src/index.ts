@@ -21,12 +21,13 @@ if (!BRAVE_API_KEY) {
 const program = new Command()
   .option("--transport <stdio|http>", "transport type", "http")
   .option("--port <number>", "desired port for HTTP transport", "3000")
+  .option("--host <string>", "host address to bind to for HTTP transport", "127.0.0.1")
   .allowUnknownOption()
   .parse(process.argv);
 
 const TRANSPORT_TYPES = ["stdio", "http"] as const;
 
-const CLI_OPTIONS = program.opts<{ transport: "stdio" | "http"; port: string }>();
+const CLI_OPTIONS = program.opts<{ transport: "stdio" | "http"; port: string; host: string }>();
 
 if (!TRANSPORT_TYPES.includes(CLI_OPTIONS.transport)) {
   console.error(`Invalid --transport value: '${CLI_OPTIONS.transport}'. Must be one of: ${TRANSPORT_TYPES.join(", ")}.`);
@@ -83,7 +84,7 @@ async function getHttpTransportForRequest(req: Request, transports: Map<string, 
   throw new Error('Invalid request - no session ID or not initialization request');
 }
 
-function startHttpServer(port: string, transports: Map<string, StreamableHTTPServerTransport>) {
+function startHttpServer(port: string, host: string, transports: Map<string, StreamableHTTPServerTransport>) {
   const app = express();
 
   app.use(express.json());
@@ -102,7 +103,7 @@ function startHttpServer(port: string, transports: Map<string, StreamableHTTPSer
     }
   });
 
-  app.listen(port, () => console.error(`Server is running on http://localhost:${port}/mcp`));
+  app.listen(parseInt(port), host, () => console.error(`Server is running on http://${host}:${port}/mcp`));
 }
 
 async function startStdioServer() {
@@ -127,7 +128,7 @@ function main() {
   const transports = new Map<string, StreamableHTTPServerTransport>();
 
   if (CLI_OPTIONS.transport === "http") {
-    startHttpServer(CLI_OPTIONS.port, transports);
+    startHttpServer(CLI_OPTIONS.port, CLI_OPTIONS.host, transports);
   } else {
     startStdioServer();
   }
