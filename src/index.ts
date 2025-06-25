@@ -19,9 +19,9 @@ if (!BRAVE_API_KEY) {
 }
 
 const program = new Command()
-  .option("--transport <stdio|http>", "transport type", "http")
-  .option("--port <number>", "desired port for HTTP transport", "3000")
-  .option("--host <string>", "host address to bind to for HTTP transport", "127.0.0.1")
+  .option("--transport <stdio|http>", "transport type", process.env.BRAVE_MCP_TRANSPORT ?? "stdio")
+  .option("--port <number>", "desired port for HTTP transport", process.env.BRAVE_MCP_PORT ?? "3000")
+  .option("--host <string>", "host address to bind to for HTTP transport", process.env.BRAVE_MCP_HOST ?? "0.0.0.0")
   .allowUnknownOption()
   .parse(process.argv);
 

@@ -26,4 +26,4 @@ RUN npm ci --ignore-scripts --omit-dev
 
 USER node
 
-CMD ["node", "dist/index.js", "--host", "0.0.0.0", "--port", "8080", "--transport", "http"]
+CMD ["node", "dist/index.js"]
