@@ -1,14 +1,18 @@
-FROM node:22.16-alpine AS builder
-
-# Must be entire project because `prepare` script is run during `npm install` and requires all files.
-COPY src/ /app/src
-COPY tsconfig.json /tsconfig.json
+FROM node:22.16.0-bookworm-slim@sha256:048ed02c5fd52e86fda6fbd2f6a76cf0d4492fd6c6fee9e2c463ed5108da0e34 AS builder
 
 WORKDIR /app
 
-RUN --mount=type=cache,target=/root/.npm npm install
+COPY ./package.json ./package.json
+COPY ./package-lock.json ./package-lock.json
 
-FROM node:22-alpine AS release
+RUN npm ci --ignore-scripts
+
+COPY ./src ./src
+COPY ./tsconfig.json ./tsconfig.json
+
+RUN npm run build
+
+FROM node:22.16.0-bookworm-slim@sha256:048ed02c5fd52e86fda6fbd2f6a76cf0d4492fd6c6fee9e2c463ed5108da0e34 AS release
 
 WORKDIR /app
 
@@ -20,4 +24,6 @@ ENV NODE_ENV=production
 
 RUN npm ci --ignore-scripts --omit-dev
 
-ENTRYPOINT ["node", "dist/index.js"]
+USER node
+
+CMD ["node", "dist/index.js"]
