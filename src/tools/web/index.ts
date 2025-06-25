@@ -1,17 +1,22 @@
-import { type WebResponse } from "../types/index.js";
-import { BRAVE_API_KEY } from "../constants.js";
-import { checkRateLimit } from "../utils.js";
-import { z } from "zod";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { type WebResponse } from "../../types/index.js";
+import { BRAVE_API_KEY } from "../../constants.js";
+import { checkRateLimit } from "../../utils.js";
+import params, { type QueryParams } from "./QueryParams.js";
 
 export const name = "brave_web_search";
-export const description = "Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. Use this for broad information gathering, recent events, or when you need diverse web sources. Supports pagination, content filtering, and freshness controls. Maximum 20 results per request, with offset for pagination.";
-export const paramsSchema = z.object({
-    query: z.string().describe("Search query (max 400 chars, 50 words)"),
-    count: z.number().min(1).max(20).default(10).describe("Number of results (1-20, default 10)"),
-    offset: z.number().min(0).max(9).default(0).describe("Pagination offset (max 9, default 0)")
-});
 
-export async function performSearch({ query, count, offset }: z.infer<typeof paramsSchema>) {
+export const annotations: ToolAnnotations = {
+    title: "Brave Web Search",
+    openWorldHint: true,
+};
+
+export const description = "Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. Use this for broad information gathering, recent events, or when you need diverse web sources. Supports pagination, content filtering, and freshness controls. Maximum 20 results per request, with offset for pagination.";
+
+// TODO (Sampson): Add output schema
+// export const outputSchema = z.object({});
+
+export async function execute({ query, count, offset }: QueryParams) {
     checkRateLimit();
     const url = new URL('https://api.search.brave.com/res/v1/web/search');
     url.searchParams.set('q', query);
@@ -47,3 +52,11 @@ export async function performSearch({ query, count, offset }: z.infer<typeof par
         isError: false,
     };
 }
+
+export default {
+    name,
+    description,
+    annotations,
+    inputSchema: params.shape,
+    execute
+};

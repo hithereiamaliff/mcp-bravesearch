@@ -1,17 +1,23 @@
-import { z } from "zod";
-import { type WebResponse as BraveWeb, type BravePoiResponse, type BraveDescription } from "../types/index.js";
-import { performSearch as performWebSearch } from "./web.js";
-import { BRAVE_API_KEY } from "../constants.js";
-import { checkRateLimit } from "../utils.js";
+import { type WebResponse as BraveWeb, type BravePoiResponse, type BraveDescription } from "../../types/index.js";
+import { execute as performWebSearch } from "../web/index.js";
+import { BRAVE_API_KEY } from "../../constants.js";
+import { checkRateLimit } from "../../utils.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import params, { type QueryParams } from "./QueryParams.js";
 
 export const name = "brave_local_search";
-export const description = "Searches for local businesses and places using Brave's Local Search API. Best for queries related to physical locations, businesses, restaurants, services, etc. Returns detailed information including:\n- Business names and addresses\n- Ratings and review counts\n- Phone numbers and opening hours\nUse this when the query implies 'near me' or mentions specific locations. Automatically falls back to web search if no local results are found.";
-export const paramsSchema = z.object({
-    query: z.string().describe("Local search query (e.g. 'pizza near Central Park')"),
-    count: z.number().min(1).max(20).default(5).describe("Number of results (1-20, default 5)"),
-});
 
-export async function performSearch({ query, count }: z.infer<typeof paramsSchema>) {
+export const annotations: ToolAnnotations = {
+    title: "Brave Local Search",
+    openWorldHint: true,
+};
+
+export const description = "Searches for local businesses and places using Brave's Local Search API. Best for queries related to physical locations, businesses, restaurants, services, etc. Returns detailed information including:\n- Business names and addresses\n- Ratings and review counts\n- Phone numbers and opening hours\nUse this when the query implies 'near me' or mentions specific locations. Automatically falls back to web search if no local results are found.";
+
+// TODO (Sampson): Add output schema
+// export const outputSchema = z.object({});
+
+export async function execute({ query, count }: QueryParams) {
     checkRateLimit();
     // Initial search to get location IDs
     const webUrl = new URL('https://api.search.brave.com/res/v1/web/search');
@@ -113,3 +119,11 @@ function formatLocalResults(poisData: BravePoiResponse, descData: BraveDescripti
   `;
     }).join('\n---\n') || 'No local results found';
 }
+
+export default {
+    name,
+    description,
+    annotations,
+    inputSchema: params.shape,
+    execute
+};
