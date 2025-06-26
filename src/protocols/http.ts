@@ -63,16 +63,6 @@ export const start = () => {
         }
     });
 
-    app.all('/ping', (req: Request, res: Response) => {
-        // TODO (Sampson): Implement ping endpoint
-        res.status(200).end();
-    });
-
-    app.all('/invocations', (req: Request, res: Response) => {
-        // TODO (Sampson): Implement invocations endpoint
-        res.status(200).end();
-    });
-
     app.listen(options.port, options.host, () => {
         console.error(`Server is running on http://${options.host}:${options.port}/mcp`);
     });
