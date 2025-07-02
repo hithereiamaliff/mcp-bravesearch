@@ -1,10 +1,10 @@
-import { server } from "../server.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { server } from '../server.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 export const start = async (): Promise<void> => {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Stdio server started");
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('Stdio server started');
 };
 
-export default { start }
+export default { start };

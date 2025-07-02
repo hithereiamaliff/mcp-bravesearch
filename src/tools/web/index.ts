@@ -1,62 +1,169 @@
-import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { type WebResponse } from "../../types/index.js";
-import { BRAVE_API_KEY } from "../../constants.js";
-import { checkRateLimit } from "../../utils.js";
-import params, { type QueryParams } from "./QueryParams.js";
+import type { TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import params, { type QueryParams } from './QueryParams.js';
+import API from '../../BraveAPI/index.js';
+import type {
+  Discussions,
+  FAQ,
+  News,
+  Search,
+  Videos,
+  FormattedFAQResults,
+  FormattedDiscussionsResults,
+  FormattedNewsResults,
+  FormattedVideoResults,
+  FormattedWebResults,
+} from './types.js';
+import { stringify } from '../../utils.js';
 
-export const name = "brave_web_search";
+export const name = 'brave_web_search';
 
 export const annotations: ToolAnnotations = {
-    title: "Brave Web Search",
-    openWorldHint: true,
+  title: 'Brave Web Search',
+  openWorldHint: true,
 };
 
-export const description = "Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. Use this for broad information gathering, recent events, or when you need diverse web sources. Supports pagination, content filtering, and freshness controls. Maximum 20 results per request, with offset for pagination.";
+export const description = `
+    Performs web searches using the Brave Search API and returns comprehensive search results with rich metadata.
 
-// TODO (Sampson): Add output schema
-// export const outputSchema = z.object({});
+    When to use:
+        - General web searches for information, facts, or current topics
+        - Location-based queries (restaurants, businesses, points of interest)
+        - News searches for recent events or breaking stories
+        - Finding videos, discussions, or FAQ content
+        - Research requiring diverse result types (web pages, images, reviews, etc.)
 
-export async function execute({ query, count, offset }: QueryParams) {
-    checkRateLimit();
-    const url = new URL('https://api.search.brave.com/res/v1/web/search');
-    url.searchParams.set('q', query);
-    url.searchParams.set('count', Math.min(count, 20).toString()); // API limit
-    url.searchParams.set('offset', offset.toString());
+    Returns a JSON list of web results with title, description, and URL.
+    
+    When the "results_filter" parameter is empty, JSON results may also contain FAQ, Discussions, News, and Video results.
+`;
 
-    const response = await fetch(url, {
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': BRAVE_API_KEY
-        }
-    });
+export const execute = async (params: QueryParams) => {
+  const response = { content: [] as TextContent[], isError: false };
+  const { web, faq, discussions, news, videos } = await API.issueRequest<'web'>('web', params);
 
-    if (!response.ok) {
-        throw new Error(`Brave API error: ${response.status} ${response.statusText}\n${await response.text()}`);
-    }
-
-    const data = await response.json() as WebResponse;
-
-    // Extract just web results
-    const results = (data.web?.results || []).map(result => ({
-        title: result.title || '',
-        description: result.description || '',
-        url: result.url || ''
-    }));
-
+  if (!web || !Array.isArray(web.results) || web.results.length < 1) {
     return {
-        content: results.map(r => ({
-            type: "text" as const,
-            text: `Title: ${r.title}\nDescription: ${r.description}\nURL: ${r.url}`
-        })),
-        isError: false,
+      content: [
+        {
+          type: 'text' as const,
+          text: 'No web results found',
+        },
+      ],
+      isError: true,
     };
-}
+  }
+
+  // TODO (Sampson): The following is unnecessarily repetitive.
+  if (web && web.results?.length > 0) {
+    for (const entry of formatWebResults(web)) {
+      response.content.push({
+        type: 'text' as const,
+        text: stringify(entry),
+      });
+    }
+  }
+
+  if (faq && faq.results?.length > 0) {
+    for (const entry of formatFAQResults(faq)) {
+      response.content.push({
+        type: 'text' as const,
+        text: stringify(entry),
+      });
+    }
+  }
+
+  if (discussions && discussions.results?.length > 0) {
+    for (const entry of formatDiscussionsResults(discussions)) {
+      response.content.push({
+        type: 'text' as const,
+        text: stringify(entry),
+      });
+    }
+  }
+
+  if (news && news.results?.length > 0) {
+    for (const entry of formatNewsResults(news)) {
+      response.content.push({
+        type: 'text' as const,
+        text: stringify(entry),
+      });
+    }
+  }
+
+  if (videos && videos.results?.length > 0) {
+    for (const entry of formatVideoResults(videos)) {
+      response.content.push({
+        type: 'text' as const,
+        text: stringify(entry),
+      });
+    }
+  }
+
+  return response;
+};
+
+export const formatWebResults = (web: Search): FormattedWebResults => {
+  return (web.results || []).map(({ url, title, description, extra_snippets }) => ({
+    url,
+    title,
+    description,
+    extra_snippets,
+  }));
+};
+
+const formatFAQResults = (faq: FAQ): FormattedFAQResults => {
+  return (faq.results || []).map(({ question, answer, title, url }) => ({
+    question,
+    answer,
+    title,
+    url,
+  }));
+};
+
+const formatDiscussionsResults = (discussions: Discussions): FormattedDiscussionsResults => {
+  return (discussions.results || []).map(({ url, data }) => ({
+    mutated_by_goggles: discussions.mutated_by_goggles,
+    url,
+    data,
+  }));
+};
+
+const formatNewsResults = (news: News): FormattedNewsResults => {
+  return (news.results || []).map(
+    ({ source, breaking, is_live, age, url, title, description, extra_snippets }) => ({
+      mutated_by_goggles: news.mutated_by_goggles,
+      source,
+      breaking,
+      is_live,
+      age,
+      url,
+      title,
+      description,
+      extra_snippets,
+    })
+  );
+};
+
+const formatVideoResults = (videos: Videos): FormattedVideoResults => {
+  return (videos.results || []).map(({ url, age, title, description, video, thumbnail }) => ({
+    mutated_by_goggles: videos.mutated_by_goggles,
+    url,
+    title,
+    description,
+    age,
+    thumbnail_url: thumbnail?.src,
+    duration: video.duration,
+    view_count: video.views,
+    creator: video.creator,
+    publisher: video.publisher,
+    tags: video.tags,
+  }));
+};
 
 export default {
-    name,
-    description,
-    annotations,
-    inputSchema: params.shape,
-    execute
+  name,
+  description,
+  annotations,
+  inputSchema: params.shape,
+  execute,
 };

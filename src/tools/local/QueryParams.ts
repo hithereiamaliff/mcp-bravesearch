@@ -1,16 +1,12 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-export const params = z.object({
-    query: z.string()
-        .describe("Local search query (e.g. 'pizza near Central Park')"),
-    count: z.number()
-        .int()
-        .min(1)
-        .max(20)
-        .default(5)
-        .describe("Number of results (1-20, default 5)")
+export const LocalPoisParams = z.object({
+  ids: z.array(z.string()).describe('List of location IDs for which to fetch POIs'),
 });
 
-export type QueryParams = z.infer<typeof params>;
+export const LocalDescriptionsParams = z.object({
+  ids: z.array(z.string()).describe('List of location IDs for which to fetch descriptions'),
+});
 
-export default params;
+export type LocalPoisParams = z.infer<typeof LocalPoisParams>;
+export type LocalDescriptionsParams = z.infer<typeof LocalDescriptionsParams>;

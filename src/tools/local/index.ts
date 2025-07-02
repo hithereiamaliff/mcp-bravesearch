@@ -1,129 +1,167 @@
-import { type WebResponse as BraveWeb, type BravePoiResponse, type BraveDescription } from "../../types/index.js";
-import { execute as performWebSearch } from "../web/index.js";
-import { BRAVE_API_KEY } from "../../constants.js";
-import { checkRateLimit } from "../../utils.js";
-import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import params, { type QueryParams } from "./QueryParams.js";
+import type {
+  LocationResult,
+  LocationDescription,
+  OpeningHours,
+  DayOpeningHours,
+} from './types.js';
+import webParams, { type QueryParams as WebQueryParams } from '../web/QueryParams.js';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import API from '../../BraveAPI/index.js';
+import { formatWebResults } from '../web/index.js';
+import { log, stringify } from '../../utils.js';
+import { WebSearchApiResponse } from '../web/types.js';
 
-export const name = "brave_local_search";
+export const name = 'brave_local_search';
 
 export const annotations: ToolAnnotations = {
-    title: "Brave Local Search",
-    openWorldHint: true,
+  title: 'Brave Local Search',
+  openWorldHint: true,
 };
 
-export const description = "Searches for local businesses and places using Brave's Local Search API. Best for queries related to physical locations, businesses, restaurants, services, etc. Returns detailed information including:\n- Business names and addresses\n- Ratings and review counts\n- Phone numbers and opening hours\nUse this when the query implies 'near me' or mentions specific locations. Automatically falls back to web search if no local results are found.";
+export const description = `
+    Brave Local Search API provides enrichments for location search results. Access to this API is available only through the Brave Search API Pro plans; confirm the user's plan before using this tool (if the user does not have a Pro plan, use the brave_web_search tool). Searches for local businesses and places using Brave's Local Search API. Best for queries related to physical locations, businesses, restaurants, services, etc.
+    
+    Returns detailed information including:
+        - Business names and addresses
+        - Ratings and review counts
+        - Phone numbers and opening hours
 
-// TODO (Sampson): Add output schema
-// export const outputSchema = z.object({});
+    Use this when the query implies 'near me', 'in my area', or mentions specific locations (e.g., 'in San Francisco'). This tool automatically falls back to brave_web_search if no local results are found.
+`;
 
-export async function execute({ query, count }: QueryParams) {
-    checkRateLimit();
-    // Initial search to get location IDs
-    const webUrl = new URL('https://api.search.brave.com/res/v1/web/search');
-    webUrl.searchParams.set('q', query);
-    webUrl.searchParams.set('search_lang', 'en');
-    webUrl.searchParams.set('result_filter', 'locations');
-    webUrl.searchParams.set('count', Math.min(count, 20).toString());
+// Access to Local API is available through the Pro plans.
+export const execute = async (params: WebQueryParams) => {
+  // Make sure both 'web' and 'locations' are in the result_filter
+  params = { ...params, result_filter: [...(params.result_filter || []), 'web', 'locations'] };
 
-    const webResponse = await fetch(webUrl, {
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': BRAVE_API_KEY
-        }
-    });
+  // Starts with a web search to retrieve potential location IDs
+  const { locations, web: web_fallback } = await API.issueRequest<'web'>('web', params);
 
-    if (!webResponse.ok) {
-        throw new Error(`Brave API error: ${webResponse.status} ${webResponse.statusText}\n${await webResponse.text()}`);
+  // We can send up to 20 location IDs at a time to the Local API
+  // TODO (Sampson): Add support for multiple requests
+  const locationIDs = (locations?.results || []).map((poi) => poi.id as string).slice(0, 20);
+
+  // No locations were found - user's plan may not include access to the Local API
+  if (!locations || locationIDs.length === 0) {
+    // If we have web results, but no locations, we'll fall back to the web results
+    if (web_fallback && web_fallback.results.length > 0) {
+      return buildFallbackWebResponse(web_fallback);
     }
 
-    const webData = await webResponse.json() as BraveWeb;
-    const locationIds = webData.locations?.results?.filter((r): r is { id: string; title?: string } => r.id != null).map(r => r.id) || [];
-
-    if (locationIds.length === 0) {
-        return performWebSearch({ query, count, offset: 0 }); // Fallback to web search with default offset
-    }
-
-    // Get POI details and descriptions in parallel
-    const [poisData, descriptionsData] = await Promise.all([
-        getPoisData(locationIds),
-        getDescriptionsData(locationIds)
-    ]);
-
+    // If we have no web results, we'll send a message to the user
     return {
-        content: [{
-            type: "text" as const,
-            text: formatLocalResults(poisData, descriptionsData)
-        }],
-        isError: false,
+      content: [
+        {
+          type: 'text' as const,
+          text: "No location data was returned. User's plan does not support local search, or the query may be unclear.",
+        },
+      ],
     };
-}
+  }
 
-async function getPoisData(ids: string[]): Promise<BravePoiResponse> {
-    checkRateLimit();
-    const url = new URL('https://api.search.brave.com/res/v1/local/pois');
-    ids.filter(Boolean).forEach(id => url.searchParams.append('ids', id));
-    const response = await fetch(url, {
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': BRAVE_API_KEY
-        }
+  // Fetch AI-generated descriptions
+  const descriptions = await API.issueRequest<'localDescriptions'>('localDescriptions', {
+    ids: locationIDs,
+  });
+
+  return {
+    content: formatLocalResults(locations.results, descriptions.results).map((formattedPOI) => ({
+      type: 'text' as const,
+      text: formattedPOI,
+    })),
+  };
+};
+
+const buildFallbackWebResponse = (web_fallback: WebSearchApiResponse['web']): CallToolResult => {
+  if (!web_fallback || web_fallback.results.length === 0) throw new Error('No web results found');
+
+  const fallback = {
+    content: [
+      {
+        type: 'text' as const,
+        text: "No location data was returned. Either the user's plan does not support local search, or the API was unable to find locations for the provided query. Falling back to general web search.",
+      },
+    ],
+  };
+
+  for (const web_result of formatWebResults(web_fallback)) {
+    fallback.content.push({
+      type: 'text' as const,
+      text: stringify(web_result),
     });
+  }
 
-    if (!response.ok) {
-        throw new Error(`Brave API error: ${response.status} ${response.statusText}\n${await response.text()}`);
-    }
+  return fallback;
+};
 
-    const poisResponse = await response.json() as BravePoiResponse;
-    return poisResponse;
-}
-
-async function getDescriptionsData(ids: string[]): Promise<BraveDescription> {
-    checkRateLimit();
-    const url = new URL('https://api.search.brave.com/res/v1/local/descriptions');
-    ids.filter(Boolean).forEach(id => url.searchParams.append('ids', id));
-    const response = await fetch(url, {
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': BRAVE_API_KEY
-        }
+const formatLocalResults = (
+  poisData: LocationResult[],
+  descData: LocationDescription[] = []
+): string[] => {
+  return poisData.map((poi) => {
+    return stringify({
+      name: poi.title,
+      price_range: poi.price_range,
+      phone: poi.contact?.telephone,
+      rating: poi.rating?.ratingValue,
+      hours: formatOpeningHours(poi.opening_hours),
+      rating_count: poi.rating?.reviewCount,
+      description: descData.find(({ id }) => id === poi.id)?.description,
+      address: poi.postal_address?.displayAddress,
     });
+  });
+};
 
-    if (!response.ok) {
-        throw new Error(`Brave API error: ${response.status} ${response.statusText}\n${await response.text()}`);
+const formatOpeningHours = (openingHours?: OpeningHours): Record<string, string> | undefined => {
+  if (!openingHours) return undefined;
+  /**
+   * Response will be something like {
+   *     'sunday': '10:00-18:00',
+   *     'monday': '10:00-18:00',
+   *     'tuesday': '10:00-18:00',
+   *     'wednesday': '10:00-18:00, 19:00-22:00',
+   *     'thursday': '10:00-18:00',
+   *     'friday': '10:00-18:00',
+   *     'saturday': '12:00-18:00',
+   * }
+   */
+  const today: DayOpeningHours[] = openingHours.current_day || [];
+  const response = {} as Record<string, string>;
+
+  const dayHours: [string, string[]][] = [
+    [
+      `today (${today[0].full_name.toLowerCase()})`,
+      today.map(({ opens, closes }) => `${opens}-${closes}`),
+    ],
+  ];
+
+  // Add the rest of the days to the response
+  for (let parts of openingHours.days || []) {
+    // Not all days have arrays of hours, so normalize to an array
+    if (!Array.isArray(parts)) parts = [parts];
+
+    // Add the hours for each day to the response
+    for (const { full_name, opens, closes } of parts) {
+      const dayName = full_name.toLowerCase();
+      const existingEntry = dayHours.find(([name]) => name === dayName);
+
+      existingEntry
+        ? existingEntry[1].push(`${opens}-${closes}`)
+        : dayHours.push([dayName, [`${opens}-${closes}`]]);
     }
+  }
 
-    const descriptionsData = await response.json() as BraveDescription;
-    return descriptionsData;
-}
+  for (const [name, hours] of dayHours) {
+    response[name] = hours.join(', ');
+  }
 
-function formatLocalResults(poisData: BravePoiResponse, descData: BraveDescription): string {
-    return (poisData.results || []).map(poi => {
-        const address = [
-            poi.address?.streetAddress ?? '',
-            poi.address?.addressLocality ?? '',
-            poi.address?.addressRegion ?? '',
-            poi.address?.postalCode ?? ''
-        ].filter(part => part !== '').join(', ') || 'N/A';
-
-        return `Name: ${poi.name}
-  Address: ${address}
-  Phone: ${poi.phone || 'N/A'}
-  Rating: ${poi.rating?.ratingValue ?? 'N/A'} (${poi.rating?.ratingCount ?? 0} reviews)
-  Price Range: ${poi.priceRange || 'N/A'}
-  Hours: ${(poi.openingHours || []).join(', ') || 'N/A'}
-  Description: ${descData.descriptions[poi.id] || 'No description available'}
-  `;
-    }).join('\n---\n') || 'No local results found';
-}
+  return response;
+};
 
 export default {
-    name,
-    description,
-    annotations,
-    inputSchema: params.shape,
-    execute
+  name,
+  description,
+  annotations,
+  inputSchema: webParams.shape,
+  execute,
 };
