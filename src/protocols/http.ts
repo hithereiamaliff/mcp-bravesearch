@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express, { type Request, type Response } from 'express';
-import { getOptions } from '../config.js';
+import config from '../config.js';
 import { server } from '../server.js';
 import { registerSigIntHandler } from '../helpers.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -37,9 +37,7 @@ const getTransport = async (
 };
 
 export const start = () => {
-  const options = getOptions();
-
-  if (!options) {
+  if (!config.ready) {
     console.error('Invalid configuration');
     process.exit(1);
   }
@@ -64,8 +62,8 @@ export const start = () => {
     }
   });
 
-  app.listen(options.port, options.host, () => {
-    console.error(`Server is running on http://${options.host}:${options.port}/mcp`);
+  app.listen(config.port, config.host, () => {
+    console.error(`Server is running on http://${config.host}:${config.port}/mcp`);
   });
 
   // Register a SIGINT handler to close all transports when the server is shut down

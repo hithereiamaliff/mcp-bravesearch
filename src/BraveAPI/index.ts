@@ -1,5 +1,5 @@
 import type { Endpoints } from './types.js';
-import { BRAVE_API_KEY } from '../constants.js';
+import config from '../config.js';
 import { checkRateLimit, log, stringify } from '../utils.js';
 
 const typeToPathMap: Record<keyof Endpoints, string> = {
@@ -14,7 +14,7 @@ const typeToPathMap: Record<keyof Endpoints, string> = {
 const defaultRequestHeaders: Record<string, string> = {
   Accept: 'application/json',
   'Accept-Encoding': 'gzip',
-  'X-Subscription-Token': BRAVE_API_KEY,
+  'X-Subscription-Token': config.braveApiKey,
 };
 
 async function issueRequest<T extends keyof Endpoints>(

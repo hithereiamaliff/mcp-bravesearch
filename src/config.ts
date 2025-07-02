@@ -7,6 +7,14 @@ type Configuration = {
   braveApiKey: string;
 };
 
+const state: Configuration & { ready: boolean } = {
+  transport: 'http',
+  port: 8080,
+  host: '0.0.0.0',
+  braveApiKey: process.env.BRAVE_API_KEY ?? '',
+  ready: false,
+};
+
 export function getOptions(): Configuration | false {
   const program = new Command()
     .option('--brave-api-key <string>', 'Brave API key', process.env.BRAVE_API_KEY ?? '')
@@ -54,7 +62,14 @@ export function getOptions(): Configuration | false {
     }
   }
 
+  // Update state
+  state.braveApiKey = options.braveApiKey;
+  state.transport = options.transport;
+  state.port = options.port;
+  state.host = options.host;
+  state.ready = true;
+
   return options as Configuration;
 }
 
-export default { getOptions };
+export default state;
