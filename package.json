@@ -16,10 +16,12 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.12.3",
+    "@modelcontextprotocol/sdk": "1.13.3",
     "commander": "14.0.0",
     "express": "5.1.0",
     "zod": "3.25.67"
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@types/express": "5.0.3",
     "@types/node": "24.0.3",
+    "prettier": "3.6.2",
     "shx": "0.4.0",
     "typescript": "5.8.3"
   }
