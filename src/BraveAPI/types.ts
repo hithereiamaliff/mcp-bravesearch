@@ -1,8 +1,8 @@
-import type { QueryParams as WebQueryParams } from '../tools/web/QueryParams.js';
-import type { QueryParams as ImageQueryParams } from '../tools/images/QueryParams.js';
-import type { QueryParams as VideoQueryParams } from '../tools/videos/QueryParams.js';
-import type { QueryParams as NewsQueryParams } from '../tools/news/QueryParams.js';
-import type { LocalPoisParams, LocalDescriptionsParams } from '../tools/local/QueryParams.js';
+import type { QueryParams as WebQueryParams } from '../tools/web/params.js';
+import type { QueryParams as ImageQueryParams } from '../tools/images/params.js';
+import type { QueryParams as VideoQueryParams } from '../tools/videos/params.js';
+import type { QueryParams as NewsQueryParams } from '../tools/news/params.js';
+import type { LocalPoisParams, LocalDescriptionsParams } from '../tools/local/params.js';
 import type { WebSearchApiResponse } from '../tools/web/types.js';
 import type { ImageSearchApiResponse } from '../tools/images/types.js';
 import type { VideoSearchApiResponse } from '../tools/videos/types.js';

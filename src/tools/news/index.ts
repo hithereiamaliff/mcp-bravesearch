@@ -1,5 +1,5 @@
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import params, { type QueryParams } from './QueryParams.js';
+import params, { type QueryParams } from './params.js';
 import API from '../../BraveAPI/index.js';
 import { stringify } from '../../utils.js';
 

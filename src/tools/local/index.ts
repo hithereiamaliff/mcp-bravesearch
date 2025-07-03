@@ -4,7 +4,7 @@ import type {
   OpeningHours,
   DayOpeningHours,
 } from './types.js';
-import webParams, { type QueryParams as WebQueryParams } from '../web/QueryParams.js';
+import webParams, { type QueryParams as WebQueryParams } from '../web/params.js';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import API from '../../BraveAPI/index.js';
 import { formatWebResults } from '../web/index.js';
