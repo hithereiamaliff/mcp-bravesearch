@@ -39,18 +39,26 @@ export const description = `
 
 export const execute = async (params: QueryParams) => {
   const response = { content: [] as TextContent[], isError: false };
-  const { web, faq, discussions, news, videos } = await API.issueRequest<'web'>('web', params);
+  const { web, faq, discussions, news, videos, summarizer } = await API.issueRequest<'web'>(
+    'web',
+    params
+  );
+
+  if (summarizer) {
+    response.content.push({
+      type: 'text' as const,
+      text: `Summarizer key: ${summarizer.key}`,
+    });
+  }
 
   if (!web || !Array.isArray(web.results) || web.results.length < 1) {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: 'No web results found',
-        },
-      ],
-      isError: true,
-    };
+    response.isError = true;
+    response.content.push({
+      type: 'text' as const,
+      text: 'No web results found',
+    });
+
+    return response;
   }
 
   // TODO (Sampson): The following is unnecessarily repetitive.

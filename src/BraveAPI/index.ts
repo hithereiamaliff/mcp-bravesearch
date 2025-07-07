@@ -9,6 +9,7 @@ const typeToPathMap: Record<keyof Endpoints, string> = {
   news: '/res/v1/news/search',
   videos: '/res/v1/videos/search',
   web: '/res/v1/web/search',
+  summarizer: '/res/v1/summarizer/search',
 };
 
 const defaultRequestHeaders: Record<string, string> = {
@@ -49,7 +50,12 @@ async function issueRequest<T extends keyof Endpoints>(
 
     // Handle result_filter parameter
     if (key === 'result_filter') {
-      if (Array.isArray(value) && value.length > 0) {
+      // Handle special behavior of 'summary' parameter:
+      // Requires `result_filter` to be empty, or only contain 'summarizer'
+      // see: https://bravesoftware.slack.com/archives/C01NNFM9XMM/p1751654841090929
+      if ('summary' in parameters && parameters.summary === true) {
+        queryParams.set(key, 'summarizer');
+      } else if (Array.isArray(value) && value.length > 0) {
         queryParams.set(key, value.join(','));
       }
 
