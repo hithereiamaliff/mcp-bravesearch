@@ -66,21 +66,6 @@ export const start = () => {
     res.status(200).json({ message: 'pong' });
   });
 
-  app.all('/invocations', async (req: Request, res: Response) => {
-    try {
-      const transport = await getTransport(req, transports, req.headers['mcp-session-id']);
-      await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      if (!res.headersSent) {
-        res.status(500).json({
-          id: null,
-          jsonrpc: '2.0',
-          error: { code: -32603, message: 'Internal server error' },
-        });
-      }
-    }
-  });
-
   app.listen(config.port, config.host, () => {
     console.error(`Server is running on http://${config.host}:${config.port}/mcp`);
   });
