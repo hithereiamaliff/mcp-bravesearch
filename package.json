@@ -2,10 +2,20 @@
   "name": "@brave/brave-search-mcp-server",
   "version": "1.1",
   "description": "MCP server for Brave Search. Uses the Brave Search API to return results from the web, including ranked links, images, and videos, as well as AI summaries of pages, rich results, and more.",
+  "keywords": [
+    "api",
+    "brave",
+    "mcp",
+    "search"
+  ],
   "license": "MIT",
   "author": "Brave Software, Inc. (https://brave.com)",
-  "homepage": "https://modelcontextprotocol.io",
-  "bugs": "https://github.com/brave-experiments/brave-search-mcp-server/issues",
+  "homepage": "https://github.com/brave/brave-search-mcp-server",
+  "bugs": "https://github.com/brave/brave-search-mcp-server/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brave/brave-search-mcp-server.git"
+  },
   "type": "module",
   "bin": {
     "brave-search-mcp-server": "dist/index.js"
