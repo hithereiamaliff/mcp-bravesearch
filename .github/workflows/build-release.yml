@@ -41,7 +41,7 @@ jobs:
 
       - name: Bump version and commit build assets
         run: |
-          git add package.json
+          git add package.json package-lock.json
           git commit -m "ci: update build assets (${{ steps.bump-version.outputs.version }})"
           git push
 
