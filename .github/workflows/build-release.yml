@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish-npm:
+  publish:
     runs-on: ubuntu-latest
 
     permissions:
@@ -46,25 +46,30 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        run: docker build -t ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }} .
+        run: |
+          docker build \
+            -t ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }} \
+            -t ${GITHUB_REPOSITORY}:${GITHUB_SHA} \
+            -t ${GITHUB_REPOSITORY}:latest \
+            .
 
       - name: Push to Docker Hub
-        run: docker push ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }}
+        run: docker push ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }} ${GITHUB_REPOSITORY}:${GITHUB_SHA}${GITHUB_REPOSITORY}:latest
 
-      - name: Bump version and commit build assets
-        run: |
-          git add package.json package-lock.json
-          git commit -m "ci: update build assets (${{ steps.bump-version.outputs.version }})"
-          git push
+      # - name: Bump version and commit build assets
+      #   run: |
+      #     git add package.json package-lock.json
+      #     git commit -m "ci: update build assets (${{ steps.bump-version.outputs.version }})"
+      #     git push
 
-      - name: Publish NPM package
-        run: npm publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # - name: Publish NPM package
+      #   run: npm publish --no-git-checks --access public
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          tag_name: ${{ steps.bump-version.outputs.version }}
-          generate_release_notes: true
-          make_latest: true
+      # - name: Create release
+      #   uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+      #   with:
+      #     tag_name: ${{ steps.bump-version.outputs.version }}
+      #     generate_release_notes: true
+      #     make_latest: true
