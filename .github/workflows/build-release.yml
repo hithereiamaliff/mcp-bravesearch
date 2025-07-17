@@ -39,6 +39,18 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: docker build -t ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }} .
+
+      - name: Push to Docker Hub
+        run: docker push ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }}
+
       - name: Bump version and commit build assets
         run: |
           git add package.json package-lock.json
