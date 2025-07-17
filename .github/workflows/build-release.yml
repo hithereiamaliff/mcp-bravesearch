@@ -50,14 +50,12 @@ jobs:
           docker build \
             -t ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }} \
             -t ${GITHUB_REPOSITORY}:${GITHUB_SHA} \
+            -t ${GITHUB_REPOSITORY}:${GITHUB_SHA::7} \
             -t ${GITHUB_REPOSITORY}:latest \
             .
 
       - name: Push to Docker Hub
-        run: |
-          docker push ${GITHUB_REPOSITORY}:${{ steps.bump-version.outputs.version }}
-          docker push ${GITHUB_REPOSITORY}:${GITHUB_SHA}
-          docker push ${GITHUB_REPOSITORY}:latest
+        run: docker push ${GITHUB_REPOSITORY} --all-tags
 
       # - name: Bump version and commit build assets
       #   run: |
