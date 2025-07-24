@@ -209,7 +209,6 @@ export const params = z.object({
         'summarizer',
         'videos',
         'web',
-        'summarizer',
         'locations',
         'rich',
       ])
