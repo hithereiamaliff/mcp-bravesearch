@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import dotenv from 'dotenv';
+dotenv.config();
 
 type Configuration = {
   transport: 'stdio' | 'http';
