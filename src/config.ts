@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ debug: false, quiet: true });
 
 type Configuration = {
   transport: 'stdio' | 'http';
