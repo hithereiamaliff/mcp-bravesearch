@@ -12,8 +12,7 @@ export const server = new McpServer(
       logging: {},
       tools: { listChanged: false },
     },
-    instructions:
-      'Use this server to search the Web for various types of data ' + 'via the Brave Search API.',
+    instructions: `Use this server to search the Web for various types of data via the Brave Search API.`,
   }
 );
 
