@@ -8,7 +8,7 @@ import webParams, { type QueryParams as WebQueryParams } from '../web/params.js'
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import API from '../../BraveAPI/index.js';
 import { formatWebResults } from '../web/index.js';
-import { log, stringify } from '../../utils.js';
+import { stringify } from '../../utils.js';
 import { WebSearchApiResponse } from '../web/types.js';
 
 export const name = 'brave_local_search';

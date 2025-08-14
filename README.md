@@ -102,6 +102,7 @@ The server supports the following environment variables:
 - `BRAVE_MCP_TRANSPORT`: Transport mode ("http" or "stdio", default: "http")
 - `BRAVE_MCP_PORT`: HTTP server port (default: 8080)
 - `BRAVE_MCP_HOST`: HTTP server host (default: "0.0.0.0")
+- `BRAVE_MCP_LOG_LEVEL`: Desired logging level("debug", "info", "notice", "warning", "error", "critical", "alert", or "emergency", default: "info")
 
 ### Command Line Options
 

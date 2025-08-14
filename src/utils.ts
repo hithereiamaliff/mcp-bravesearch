@@ -1,17 +1,10 @@
-import type { LoggingLevel } from '@modelcontextprotocol/sdk/types.js';
 import { RATE_LIMIT } from './constants.js';
-import { server } from './server.js';
 
 let requestCount = {
   second: 0,
   month: 0,
   lastReset: Date.now(),
 };
-
-export async function log(level: LoggingLevel, message: string) {
-  const time = new Date().toISOString();
-  await server.server.sendLoggingMessage({ level, data: { message, time } });
-}
 
 export function checkRateLimit() {
   const now = Date.now();
