@@ -34,7 +34,7 @@ export const maybeRegisterCustomSetLevelRequestHandler = (server: McpServer['ser
     );
   } catch (error) {
     console.error(
-      `Failed to register custom SetLevelRequest handler. The SDK may now provide it's own handler. See https://github.com/modelcontextprotocol/typescript-sdk/issues/871 for more information.`,
+      `Failed to register custom SetLevelRequest handler. The SDK may now provide its own handler. See https://github.com/modelcontextprotocol/typescript-sdk/issues/871 for more information.`,
       error
     );
   }
