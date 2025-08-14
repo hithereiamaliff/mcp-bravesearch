@@ -2,7 +2,6 @@ import type { Endpoints } from './types.js';
 import config from '../config.js';
 import { stringify } from '../utils.js';
 import ClientLogger from '../ClientLogger.js';
-import { mcpServer } from '../server.js';
 
 const typeToPathMap: Record<keyof Endpoints, string> = {
   images: '/res/v1/images/search',
