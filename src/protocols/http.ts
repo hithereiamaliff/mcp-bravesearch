@@ -46,7 +46,7 @@ export const getTransport = async (request: Request): Promise<StreamableHTTPServ
     return transport;
   }
 
-  throw new Error('Invalid request');
+  throw new Error('Invalid request: must be an initialization request, include a valid session ID, or be a ListTools method request');
 };
 
 export const createApp = () => {
