@@ -61,7 +61,7 @@ const log = async (level: LoggingLevel, message: string) => {
   }
 
   try {
-    await mcpServer?.server.sendLoggingMessage({ level, data: { message, time } });
+    await mcpServer.server.sendLoggingMessage({ level, data: { message, time } });
   } catch (error) {
     console.error(`Error sending logging message: ${error}`);
   }
