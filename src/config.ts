@@ -1,3 +1,4 @@
+import { LoggingLevel, LoggingLevelSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 dotenv.config({ debug: false, quiet: true });
@@ -7,6 +8,7 @@ type Configuration = {
   port: number;
   host: string;
   braveApiKey: string;
+  loggingLevel: LoggingLevel;
 };
 
 const state: Configuration & { ready: boolean } = {
@@ -14,12 +16,14 @@ const state: Configuration & { ready: boolean } = {
   port: 8080,
   host: '0.0.0.0',
   braveApiKey: process.env.BRAVE_API_KEY ?? '',
+  loggingLevel: 'info',
   ready: false,
 };
 
 export function getOptions(): Configuration | false {
   const program = new Command()
     .option('--brave-api-key <string>', 'Brave API key', process.env.BRAVE_API_KEY ?? '')
+    .option('--logging-level <string>', 'Logging level', process.env.BRAVE_MCP_LOG_LEVEL ?? 'info')
     .option('--transport <stdio|http>', 'transport type', process.env.BRAVE_MCP_TRANSPORT ?? 'http')
     .option(
       '--port <number>',
@@ -39,6 +43,13 @@ export function getOptions(): Configuration | false {
   if (!['stdio', 'http'].includes(options.transport)) {
     console.error(
       `Invalid --transport value: '${options.transport}'. Must be one of: stdio, http.`
+    );
+    return false;
+  }
+
+  if (!LoggingLevelSchema.options.includes(options.loggingLevel)) {
+    console.error(
+      `Invalid --logging-level value: '${options.loggingLevel}'. Must be one of: ${LoggingLevelSchema.options.join(', ')}`
     );
     return false;
   }
@@ -69,6 +80,7 @@ export function getOptions(): Configuration | false {
   state.transport = options.transport;
   state.port = options.port;
   state.host = options.host;
+  state.loggingLevel = options.loggingLevel;
   state.ready = true;
 
   return options as Configuration;

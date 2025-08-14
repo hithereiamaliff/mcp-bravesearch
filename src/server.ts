@@ -1,7 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import tools from './tools/index.js';
+import ClientLogger, { maybeRegisterCustomSetLevelRequestHandler } from './ClientLogger.js';
 
-export const server = new McpServer(
+export const mcpServer = new McpServer(
   {
     version: '0.1.0',
     name: 'brave-search-mcp-server',
@@ -16,6 +17,10 @@ export const server = new McpServer(
   }
 );
 
+ClientLogger.setServer(mcpServer);
+// https://github.com/modelcontextprotocol/typescript-sdk/issues/871
+maybeRegisterCustomSetLevelRequestHandler(mcpServer.server);
+
 for (const tool of Object.values(tools)) {
-  server.tool(tool.name, tool.description, tool.inputSchema, tool.annotations, tool.execute);
+  mcpServer.tool(tool.name, tool.description, tool.inputSchema, tool.annotations, tool.execute);
 }

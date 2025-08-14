@@ -12,6 +12,7 @@ services:
       - BRAVE_MCP_TRANSPORT=http
       - BRAVE_MCP_PORT=8080
       - BRAVE_MCP_HOST=0.0.0.0
+      - BRAVE_MCP_LOG_LEVEL=info
     init: true
     ports:
       - 8080:8080

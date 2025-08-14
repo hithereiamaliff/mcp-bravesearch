@@ -1,6 +1,8 @@
 import type { Endpoints } from './types.js';
 import config from '../config.js';
-import { checkRateLimit, log, stringify } from '../utils.js';
+import { stringify } from '../utils.js';
+import ClientLogger from '../ClientLogger.js';
+import { mcpServer } from '../server.js';
 
 const typeToPathMap: Record<keyof Endpoints, string> = {
   images: '/res/v1/images/search',
@@ -31,7 +33,7 @@ async function issueRequest<T extends keyof Endpoints>(
   const url = new URL(`https://api.search.brave.com${typeToPathMap[endpoint]}`);
   const queryParams = new URLSearchParams();
 
-  await log('info', `Preparing to issue request to ${url.toString()}`);
+  await ClientLogger.log('info', `Preparing to issue request to ${url.toString()}`);
 
   // TODO (Sampson): Move param-construction/validation to modules
   for (const [key, value] of Object.entries(parameters)) {
@@ -78,14 +80,14 @@ async function issueRequest<T extends keyof Endpoints>(
     }
   }
 
-  await log('debug', `Using parameters: ${queryParams.toString()}`);
+  await ClientLogger.log('debug', `Using parameters: ${queryParams.toString()}`);
 
   // Issue Request
   const urlWithParams = url.toString() + '?' + queryParams.toString();
   const headers = { ...defaultRequestHeaders, ...requestHeaders } as Headers;
   const response = await fetch(urlWithParams, { headers });
 
-  await log('debug', `Received response from ${urlWithParams}`);
+  await ClientLogger.log('debug', `Received response from ${urlWithParams}`);
 
   // Handle Error
   if (!response.ok) {
@@ -98,7 +100,7 @@ async function issueRequest<T extends keyof Endpoints>(
       errorMessage += `\n${await response.text()}`;
     }
 
-    await log('error', errorMessage);
+    await ClientLogger.log('error', errorMessage);
 
     // TODO (Sampson): Setup proper error handling, updating state, etc.
     throw new Error(errorMessage);
@@ -106,7 +108,7 @@ async function issueRequest<T extends keyof Endpoints>(
 
   // Return Response
   const responseBody = await response.json();
-  await log('debug', `Returning response: ${stringify(responseBody, true)}`);
+  await ClientLogger.log('debug', `Returning response: ${stringify(responseBody, true)}`);
 
   return responseBody as Endpoints[T]['response'];
 }
