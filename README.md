@@ -2,17 +2,29 @@
 
 An MCP server implementation that integrates the Brave Search API, providing comprehensive search capabilities including web search, local business search, image search, video search, news search, and AI-powered summarization. This project supports both STDIO and HTTP transports, with STDIO as the default mode.
 
-## Migration
+## Fork Information
 
-### 1.x to 2.x
+This project is a **direct fork** of the official [Brave Search MCP Server](https://github.com/brave/brave-search-mcp-server) by Brave Software, Inc.
 
-#### Default transport now STDIO
+### Improvements & Additions
 
-To follow established MCP conventions, the server now defaults to STDIO. If you would like to continue using HTTP, you will need to set the `BRAVE_MCP_TRANSPORT` environment variable to `http`, or provide the runtime argument `--transport http` when launching the server.
+The following enhancements have been made to the original codebase:
 
-#### Response structure of `brave_image_search`
+#### VPS Deployment Support
+- **HTTP Server Enhancements**: Added `/health` endpoint for container health checks and monitoring
+- **CORS Support**: Added CORS middleware for cross-origin requests in VPS deployments
+- **Flexible API Key Authentication**: API key can now be provided via:
+  - Query parameter (`?apiKey=YOUR_KEY` or `?api_key=YOUR_KEY`)
+  - HTTP header (`x-api-key` or `Authorization: Bearer YOUR_KEY`)
+  - Environment variable (`BRAVE_API_KEY`)
+- **Docker Compose**: Enhanced configuration with proper container naming, networking, logging, and health checks
+- **Nginx Configuration**: Included reverse proxy configuration for VPS deployment
+- **GitHub Actions Workflow**: Added auto-deployment workflow for CI/CD to VPS
 
-Version 1.x of the MCP server would return base64-encoded image data along with image URLs. This dramatically slowed down the response, as well as consumed unnecessarily context in the session. Version 2.x removes the base64-encoded data, and returns a response object that more closely reflects the original Brave Search API response. The updated output schema is defined in [`src/tools/images/schemas/output.ts`](https://github.com/brave/brave-search-mcp-server/blob/main/src/tools/images/schemas/output.ts).
+#### Infrastructure
+- **Health Check Endpoint**: Returns server status, version, transport type, and timestamp for monitoring
+- **Multi-stage Docker Build**: Optimized Dockerfile with health check and proper environment defaults
+- **Production-Ready Configuration**: Container runs with security best practices (non-root user, capability drops)
 
 ## Tools
 
@@ -336,6 +348,123 @@ For local development with Docker:
 docker-compose up --build
 ```
 
+## VPS Deployment
+
+This server supports deployment to a VPS with Docker, Nginx reverse proxy, and GitHub Actions auto-deployment.
+
+### Architecture
+
+```
+Client (Claude, Cursor, Windsurf, etc.)
+    ↓ HTTPS
+https://mcp.yourdomain.com/bravesearch/mcp
+    ↓
+Nginx (SSL termination + reverse proxy)
+    ↓ HTTP
+Docker Container (port 8088 → 8080)
+    ↓
+MCP Server (Streamable HTTP Transport)
+    ↓
+Brave Search API
+```
+
+### API Key Options
+
+For HTTP transport, the API key can be provided via multiple methods (in priority order):
+
+1. **Query parameter**: `?apiKey=YOUR_KEY` or `?api_key=YOUR_KEY`
+2. **HTTP header**: `x-api-key: YOUR_KEY` or `Authorization: Bearer YOUR_KEY`
+3. **Environment variable**: `BRAVE_API_KEY`
+
+### Client Configuration
+
+```json
+{
+  "mcpServers": {
+    "brave-search": {
+      "transport": "streamable-http",
+      "url": "https://mcp.yourdomain.com/bravesearch/mcp?apiKey=YOUR_BRAVE_API_KEY"
+    }
+  }
+}
+```
+
+### Deployment Files
+
+The following files are included for VPS deployment:
+
+- **`Dockerfile`** - Multi-stage Docker build with health check
+- **`docker-compose.yml`** - Docker orchestration with networking and logging
+- **`deploy/nginx-mcp.conf`** - Nginx reverse proxy configuration
+- **`.github/workflows/deploy-vps.yml`** - GitHub Actions auto-deployment workflow
+
+### First-Time VPS Setup
+
+1. **Clone the repository on your VPS:**
+   ```bash
+   mkdir -p /opt/mcp-servers/mcp-bravesearch
+   cd /opt/mcp-servers/mcp-bravesearch
+   git clone https://github.com/your-username/mcp-bravesearch.git .
+   ```
+
+2. **(Optional) Create `.env` file for default API key:**
+   ```bash
+   echo "BRAVE_API_KEY=your-api-key-here" > .env
+   ```
+
+3. **Build and start the container:**
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. **Configure Nginx** - Add the location block from `deploy/nginx-mcp.conf` to your Nginx server config:
+   ```bash
+   sudo nano /etc/nginx/sites-available/your-domain
+   # Add the location block inside the server { } block
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+### GitHub Actions Secrets
+
+Configure these secrets in your GitHub repository for auto-deployment:
+
+- `VPS_HOST` - Your VPS IP address
+- `VPS_USERNAME` - SSH username (e.g., `root`)
+- `VPS_SSH_KEY` - Private SSH key
+- `VPS_PORT` - SSH port (usually `22`)
+
+### Verify Deployment
+
+```bash
+# Test health endpoint
+curl https://mcp.yourdomain.com/bravesearch/health
+
+# Test MCP endpoint (list tools)
+curl -X POST "https://mcp.yourdomain.com/bravesearch/mcp?apiKey=YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+### Useful Commands
+
+```bash
+# View running containers
+docker ps
+
+# View logs
+docker compose logs -f
+
+# Restart container
+docker compose restart
+
+# Rebuild and restart
+docker compose up -d --build
+
+# Stop container
+docker compose down
+```
+
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+This MCP server is licensed under the [MIT License](LICENSE).
