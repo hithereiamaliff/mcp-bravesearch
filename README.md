@@ -26,6 +26,15 @@ The following enhancements have been made to the original codebase:
 - **Multi-stage Docker Build**: Optimized Dockerfile with health check and proper environment defaults
 - **Production-Ready Configuration**: Container runs with security best practices (non-root user, capability drops)
 
+#### Analytics & Monitoring
+- **Analytics Dashboard**: Real-time visual dashboard with Chart.js charts at `/analytics/dashboard`
+- **Analytics API**: JSON endpoint at `/analytics` for programmatic access to usage statistics
+- **Persistent Storage**: Analytics data persists across container restarts via Docker volumes
+- **Request Tracking**: Tracks requests by method, endpoint, client IP, and user agent
+- **Tool Call Tracking**: Monitors which Brave Search tools are used most frequently
+- **Hourly Metrics**: Time-series data for the last 24 hours of requests
+- **Backup/Restore**: Import endpoint for restoring analytics from backups
+
 ## Tools
 
 ### Web Search (`brave_web_search`)
@@ -445,6 +454,39 @@ curl -X POST "https://mcp.yourdomain.com/bravesearch/mcp?apiKey=YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
+
+### Analytics
+
+The server includes a comprehensive analytics system for monitoring usage.
+
+#### Analytics Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/analytics` | GET | JSON analytics summary |
+| `/analytics/tools` | GET | Detailed tool usage statistics |
+| `/analytics/dashboard` | GET | Visual HTML dashboard with charts |
+| `/analytics/import` | POST | Import backup data (requires key) |
+
+#### Access Analytics
+
+```bash
+# View analytics JSON
+curl https://mcp.yourdomain.com/bravesearch/analytics
+
+# View dashboard in browser
+https://mcp.yourdomain.com/bravesearch/analytics/dashboard
+
+# Import backup (if ANALYTICS_IMPORT_KEY is set)
+curl -X POST "https://mcp.yourdomain.com/bravesearch/analytics/import?key=YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d @backup.json
+```
+
+#### Analytics Data Location
+
+- **Container path**: `/app/data/analytics.json`
+- **Host volume**: `/var/lib/docker/volumes/mcp-bravesearch_analytics-data/_data/`
 
 ### Useful Commands
 

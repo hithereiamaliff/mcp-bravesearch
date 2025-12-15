@@ -17,11 +17,15 @@ services:
       - BRAVE_MCP_ENABLED_TOOLS
       - BRAVE_MCP_DISABLED_TOOLS
       - NODE_ENV=production
+      - ANALYTICS_DIR=/app/data
+      - ANALYTICS_IMPORT_KEY=${ANALYTICS_IMPORT_KEY:-}
     init: true
     ports:
       - "8088:8080"
     security_opt:
       - no-new-privileges:true
+    volumes:
+      - analytics-data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -39,3 +43,7 @@ services:
 networks:
   mcp-network:
     driver: bridge
+
+volumes:
+  analytics-data:
+    driver: local
