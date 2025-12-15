@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
-import config from '../config.js';
+import config, { setApiKey } from '../config.js';
 import createMcpServer from '../server.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { ListToolsRequest, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -52,6 +52,24 @@ const getTransport = async (request: Request): Promise<StreamableHTTPServerTrans
   return transport;
 };
 
+// Middleware to extract API key from query param, header, or env
+const extractApiKey = (req: Request, res: Response, next: NextFunction) => {
+  // Priority: query param > header > environment variable
+  const apiKey =
+    (req.query.apiKey as string) ||
+    (req.query.api_key as string) ||
+    (req.headers['x-api-key'] as string) ||
+    (req.headers['authorization']?.replace('Bearer ', '') as string) ||
+    process.env.BRAVE_API_KEY ||
+    '';
+
+  if (apiKey) {
+    setApiKey(apiKey);
+  }
+
+  next();
+};
+
 const createApp = () => {
   const app = express();
 
@@ -60,7 +78,7 @@ const createApp = () => {
     cors({
       origin: '*',
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'x-api-key'],
     })
   );
 
@@ -77,7 +95,8 @@ const createApp = () => {
     });
   });
 
-  app.all('/mcp', async (req: Request, res: Response) => {
+  // Apply API key extraction middleware to MCP endpoint
+  app.all('/mcp', extractApiKey, async (req: Request, res: Response) => {
     try {
       const transport = await getTransport(req);
       await transport.handleRequest(req, res, req.body);

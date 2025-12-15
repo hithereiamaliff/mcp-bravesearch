@@ -125,7 +125,9 @@ export function getOptions(): Configuration | false {
     return false;
   }
 
-  if (!options.braveApiKey) {
+  // For HTTP transport, API key can be provided via query param or header at request time
+  // For stdio transport, API key is required at startup
+  if (!options.braveApiKey && options.transport !== 'http') {
     console.error(
       'Error: --brave-api-key is required. You can get one at https://brave.com/search/api/.'
     );
@@ -161,6 +163,14 @@ export function getOptions(): Configuration | false {
 
 export function setOptions(options: SmitheryConfig) {
   return Object.assign(state, options);
+}
+
+export function setApiKey(apiKey: string) {
+  state.braveApiKey = apiKey;
+}
+
+export function getApiKey(): string {
+  return state.braveApiKey;
 }
 
 export default state;
