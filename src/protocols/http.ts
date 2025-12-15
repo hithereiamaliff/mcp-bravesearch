@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import express, { type Request, type Response } from 'express';
+import cors from 'cors';
 import config from '../config.js';
 import createMcpServer from '../server.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { ListToolsRequest, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import pkg from '../../package.json' with { type: 'json' };
 
 const yieldGenericServerError = (res: Response) => {
   res.status(500).json({
@@ -53,7 +55,27 @@ const getTransport = async (request: Request): Promise<StreamableHTTPServerTrans
 const createApp = () => {
   const app = express();
 
+  // CORS configuration for VPS deployment
+  app.use(
+    cors({
+      origin: '*',
+      methods: ['GET', 'POST', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id'],
+    })
+  );
+
   app.use(express.json());
+
+  // Health check endpoint for VPS deployment
+  app.get('/health', (req: Request, res: Response) => {
+    res.json({
+      status: 'healthy',
+      server: 'Brave Search MCP Server',
+      version: pkg.version,
+      transport: 'streamable-http',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   app.all('/mcp', async (req: Request, res: Response) => {
     try {

@@ -1,22 +1,41 @@
+# Brave Search MCP Server - Docker Compose
+# For self-hosting on VPS with nginx reverse proxy
+
 services:
-  mcp-server:
+  mcp-bravesearch:
     build: .
+    container_name: mcp-bravesearch
+    restart: unless-stopped
     cap_drop:
       - all
-    deploy:
-      restart_policy:
-        condition: any
-        delay: 5s
     environment:
-      - BRAVE_API_KEY
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
       - BRAVE_MCP_TRANSPORT=http
       - BRAVE_MCP_PORT=8080
       - BRAVE_MCP_HOST=0.0.0.0
       - BRAVE_MCP_LOG_LEVEL=info
       - BRAVE_MCP_ENABLED_TOOLS
       - BRAVE_MCP_DISABLED_TOOLS
+      - NODE_ENV=production
     init: true
     ports:
-      - 8080:8080
+      - "8088:8080"
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mcp-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  mcp-network:
+    driver: bridge
