@@ -1,6 +1,7 @@
 import type { Endpoints } from './types.js';
 import config from '../config.js';
 import { stringify } from '../utils.js';
+import { getRequestApiKey } from '../request-context.js';
 
 const typeToPathMap: Record<keyof Endpoints, string> = {
   images: '/res/v1/images/search',
@@ -16,7 +17,7 @@ const getDefaultRequestHeaders = (): Record<string, string> => {
   return {
     Accept: 'application/json',
     'Accept-Encoding': 'gzip',
-    'X-Subscription-Token': config.braveApiKey,
+    'X-Subscription-Token': getRequestApiKey() || config.braveApiKey,
   };
 };
 

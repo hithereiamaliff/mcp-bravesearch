@@ -3,11 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
-import config, { setApiKey } from '../config.js';
+import config from '../config.js';
 import createMcpServer from '../server.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { ListToolsRequest, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import pkg from '../../package.json' with { type: 'json' };
+import { isKeyServiceEnabled, resolveKeyCredentials } from '../key-service.js';
+import { requestContext } from '../request-context.js';
 
 // ============================================================================
 // ANALYTICS CONFIGURATION
@@ -228,22 +230,111 @@ const getTransport = async (request: Request): Promise<StreamableHTTPServerTrans
   return transport;
 };
 
-// Middleware to extract API key from query param, header, or env
-const extractApiKey = (req: Request, res: Response, next: NextFunction) => {
-  // Priority: query param > header > environment variable
-  const apiKey =
-    (req.query.apiKey as string) ||
-    (req.query.api_key as string) ||
-    (req.headers['x-api-key'] as string) ||
-    (req.headers['authorization']?.replace('Bearer ', '') as string) ||
-    process.env.BRAVE_API_KEY ||
-    '';
-
-  if (apiKey) {
-    setApiKey(apiKey);
+const getHostedUserKey = (req: Request): string | undefined => {
+  const pathKey = req.params?.userKey;
+  if (typeof pathKey === 'string') {
+    return pathKey.startsWith('usr_') ? pathKey : undefined;
   }
 
-  next();
+  const candidate = req.query.api_key ?? req.query.apiKey;
+  return typeof candidate === 'string' && candidate.startsWith('usr_') ? candidate : undefined;
+};
+
+const hasInvalidHostedCredentialInput = (req: Request): boolean => {
+  const pathKey = req.params?.userKey;
+  if (typeof pathKey === 'string') {
+    return !pathKey.startsWith('usr_');
+  }
+
+  for (const candidate of [req.query.api_key, req.query.apiKey]) {
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return !candidate.startsWith('usr_');
+    }
+  }
+
+  return false;
+};
+
+// Middleware to resolve API key via key service or env var
+const resolveApiKey = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userKey = getHostedUserKey(req);
+    const keyServiceEnabled = isKeyServiceEnabled();
+
+    if (hasInvalidHostedCredentialInput(req)) {
+      res.status(403).json({
+        jsonrpc: '2.0',
+        error: { code: -32600, message: 'Hosted mode requires a usr_ API key.' },
+        id: null,
+      });
+      return;
+    }
+
+    if (userKey && !keyServiceEnabled) {
+      res.status(503).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Hosted API keys are unavailable because the key service is not configured.' },
+        id: null,
+      });
+      return;
+    }
+
+    if (keyServiceEnabled) {
+      if (!userKey) {
+        res.status(401).json({
+          jsonrpc: '2.0',
+          error: { code: -32600, message: 'API key required. Provide a usr_ key via URL.' },
+          id: null,
+        });
+        return;
+      }
+
+      const result = await resolveKeyCredentials(userKey);
+
+      if (!result.ok) {
+        const status = result.reason === 'invalid_key' ? 403 : 503;
+        const message =
+          result.reason === 'invalid_key'
+            ? 'Invalid or expired API key.'
+            : result.reason === 'malformed_response'
+              ? 'Authentication service returned incomplete credentials.'
+              : 'Key service unavailable. Please try again later.';
+
+        res.status(status).json({
+          jsonrpc: '2.0',
+          error: { code: result.reason === 'invalid_key' ? -32600 : -32603, message },
+          id: null,
+        });
+        return;
+      }
+
+      requestContext.run({ braveApiKey: result.credentials.apiKey }, () => next());
+      return;
+    }
+
+    const braveApiKey = process.env.BRAVE_API_KEY || '';
+
+    if (!braveApiKey) {
+      res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32600, message: 'API key required. Set BRAVE_API_KEY for self-hosted mode.' },
+        id: null,
+      });
+      return;
+    }
+
+    // Run downstream handlers in request-scoped context
+    requestContext.run({ braveApiKey }, () => next());
+  } catch (error) {
+    console.error('API key resolution error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error during API key resolution.' },
+        id: null,
+      });
+    }
+  }
 };
 
 const createApp = () => {
@@ -254,7 +345,7 @@ const createApp = () => {
     cors({
       origin: '*',
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'x-api-key'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id'],
     })
   );
 
@@ -409,8 +500,8 @@ const createApp = () => {
     res.send(getDashboardHtml());
   });
 
-  // Apply API key extraction middleware to MCP endpoint
-  app.all('/mcp', extractApiKey, async (req: Request, res: Response) => {
+  // Shared MCP request handler
+  const handleMcpEndpoint = async (req: Request, res: Response) => {
     trackRequest(req, '/mcp');
 
     // Track tool calls
@@ -427,7 +518,13 @@ const createApp = () => {
         yieldGenericServerError(res);
       }
     }
-  });
+  };
+
+  // Hosted key-service mode: /mcp/:userKey (path-based usr_ key)
+  app.all('/mcp/:userKey', resolveApiKey, handleMcpEndpoint);
+
+  // Self-hosted or query-param mode: /mcp
+  app.all('/mcp', resolveApiKey, handleMcpEndpoint);
 
   app.all('/ping', (req: Request, res: Response) => {
     trackRequest(req, '/ping');
@@ -771,6 +868,15 @@ const start = () => {
 
   app.listen(config.port, config.host, () => {
     console.log(`Server is running on http://${config.host}:${config.port}/mcp`);
+    console.log(
+      `Auth mode: ${
+        isKeyServiceEnabled()
+          ? 'hosted via mcp-key-service (/mcp/:userKey or /mcp?api_key=usr_...)'
+          : process.env.BRAVE_API_KEY
+            ? 'self-hosted via BRAVE_API_KEY'
+            : 'missing configuration'
+      }`
+    );
   });
 };
 

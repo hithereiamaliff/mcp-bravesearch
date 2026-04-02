@@ -13,10 +13,9 @@ The following enhancements have been made to the original codebase:
 #### VPS Deployment Support
 - **HTTP Server Enhancements**: Added `/health` endpoint for container health checks and monitoring
 - **CORS Support**: Added CORS middleware for cross-origin requests in VPS deployments
-- **Flexible API Key Authentication**: API key can now be provided via:
-  - Query parameter (`?apiKey=YOUR_KEY` or `?api_key=YOUR_KEY`)
-  - HTTP header (`x-api-key` or `Authorization: Bearer YOUR_KEY`)
-  - Environment variable (`BRAVE_API_KEY`)
+- **Hosted + Self-Hosted Authentication**:
+  - Hosted mode resolves `usr_...` keys via `mcp-key-service` using `/mcp/:userKey` or `?api_key=usr_...`
+  - Self-hosted mode uses the server-side `BRAVE_API_KEY` environment variable only
 - **Docker Compose**: Enhanced configuration with proper container naming, networking, logging, and health checks
 - **Nginx Configuration**: Included reverse proxy configuration for VPS deployment
 - **GitHub Actions Workflow**: Added auto-deployment workflow for CI/CD to VPS
@@ -131,7 +130,9 @@ Generates AI-powered summaries from web search results using Brave's summarizati
 
 The server supports the following environment variables:
 
-- `BRAVE_API_KEY`: Your Brave Search API key (required)
+- `BRAVE_API_KEY`: Brave Search API key for stdio mode and self-hosted HTTP mode
+- `KEY_SERVICE_URL`: `mcp-key-service` resolve endpoint for hosted `usr_...` keys
+- `KEY_SERVICE_TOKEN`: Internal bearer token used to call `mcp-key-service`
 - `BRAVE_MCP_TRANSPORT`: Transport mode ("http" or "stdio", default: "stdio")
 - `BRAVE_MCP_PORT`: HTTP server port (default: 8080)
 - `BRAVE_MCP_HOST`: HTTP server host (default: "0.0.0.0")
@@ -379,11 +380,12 @@ Brave Search API
 
 ### API Key Options
 
-For HTTP transport, the API key can be provided via multiple methods (in priority order):
+For HTTP transport, there are two supported authentication modes:
 
-1. **Query parameter**: `?apiKey=YOUR_KEY` or `?api_key=YOUR_KEY`
-2. **HTTP header**: `x-api-key: YOUR_KEY` or `Authorization: Bearer YOUR_KEY`
-3. **Environment variable**: `BRAVE_API_KEY`
+1. **Hosted mode**: provide a `usr_...` key via `?api_key=usr_...` or `/mcp/usr_...` and let the server resolve it through `mcp-key-service`
+2. **Self-hosted mode**: configure `BRAVE_API_KEY` on the server and connect to `/mcp` without sending a Brave API key from the client
+
+Raw Brave API keys are no longer accepted from HTTP query parameters or headers.
 
 ### Client Configuration
 
@@ -392,11 +394,13 @@ For HTTP transport, the API key can be provided via multiple methods (in priorit
   "mcpServers": {
     "brave-search": {
       "transport": "streamable-http",
-      "url": "https://mcp.yourdomain.com/bravesearch/mcp?apiKey=YOUR_BRAVE_API_KEY"
+      "url": "https://mcp.yourdomain.com/bravesearch/mcp?api_key=usr_your_hosted_key"
     }
   }
 }
 ```
+
+For self-hosted mode, use the same URL without the query string and set `BRAVE_API_KEY` on the server.
 
 ### Deployment Files
 
@@ -416,10 +420,16 @@ The following files are included for VPS deployment:
    git clone https://github.com/your-username/mcp-bravesearch.git .
    ```
 
-2. **(Optional) Create `.env` file for default API key:**
-   ```bash
-   echo "BRAVE_API_KEY=your-api-key-here" > .env
-   ```
+2. **(Optional) Create `.env` file for self-hosted HTTP mode:**
+    ```bash
+    echo "BRAVE_API_KEY=your-api-key-here" > .env
+    ```
+
+   **(Optional) Hosted mode with `mcp-key-service`:**
+    ```bash
+    echo "KEY_SERVICE_URL=https://your-key-service/internal/resolve" >> .env
+    echo "KEY_SERVICE_TOKEN=your-internal-token" >> .env
+    ```
 
 3. **Build and start the container:**
    ```bash
@@ -449,8 +459,13 @@ Configure these secrets in your GitHub repository for auto-deployment:
 # Test health endpoint
 curl https://mcp.yourdomain.com/bravesearch/health
 
-# Test MCP endpoint (list tools)
-curl -X POST "https://mcp.yourdomain.com/bravesearch/mcp?apiKey=YOUR_API_KEY" \
+# Test MCP endpoint (self-hosted mode)
+curl -X POST "https://mcp.yourdomain.com/bravesearch/mcp" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# Test MCP endpoint (hosted mode)
+curl -X POST "https://mcp.yourdomain.com/bravesearch/mcp?api_key=usr_your_hosted_key" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```

@@ -10,6 +10,8 @@ services:
       - all
     environment:
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      - KEY_SERVICE_URL=${KEY_SERVICE_URL:-}
+      - KEY_SERVICE_TOKEN=${KEY_SERVICE_TOKEN:-}
       - BRAVE_MCP_TRANSPORT=http
       - BRAVE_MCP_PORT=8080
       - BRAVE_MCP_HOST=0.0.0.0
