@@ -21,6 +21,8 @@ services:
       - NODE_ENV=production
       - ANALYTICS_DIR=/app/data
       - ANALYTICS_IMPORT_KEY=${ANALYTICS_IMPORT_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     init: true
     ports:
       - "8088:8080"
